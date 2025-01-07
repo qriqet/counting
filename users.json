@@ -1,6 +1,1 @@
-{
-    "computingsquid": {
-        "counts": 0,
-        "slowmode": 0
-    }
-}
+{"computingsquid": {"counts": 2, "slowmode": 0, "failed": 0}, "qriqet": {"counts": 1, "slowmode": 0, "failed": 1}}
