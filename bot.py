@@ -29,11 +29,12 @@ def dump():
     file.write(json.dumps(user_info))
     file.close()
 
-
+# discord perms stuff
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
+activity = discord.Activity(name='all the counting addicts', type=discord.ActivityType.watching)
+client = discord.Client(intents=intents, activity=activity)
 
 @client.event
 async def on_ready():
@@ -54,45 +55,82 @@ async def wrong(author, message, reason=None):
 async def on_message(message):
     if message.author == client.user:
         return
-    m = message.content
+    m = message.content.split(" ")
     author = str(message.author)
     # test commands
-    if m.startswith('$hello'):
-        await message.channel.send('Hello!')
-    if m.startswith('$ping'):
+    if m[0] == ('$ping'):
         await message.channel.send('Pong!')
     # help command
-    if m.startswith('$help'):
+    if m[0] == ('$help'):
         await message.channel.send("""
-        # Don't know how to count?
-        
-        It's simple. Simply start at 1, and increase like this:
-        `1 2 3 4 5`
-        By the way, you can't count twice in a row.
+# Don't know how to count? 
+It's simple. Simply start at 1, and increase like this:
+`1 2 3 4 5`
+By the way, you can't count twice in a row. And try not to fail, because failing will **DOUBLE** your slowmode!
+## Useful commands:
+\- $ping: pings the bot
+\- $highscore: outputs current highscore
+\- $count or $currentcount: outputs current count info
+\- $user: use this to find out stats of a user (defaults to current user) e.g. `$user computingsquid`
+### Admin-only commands:
+\- $setchannel: sets current channel to counting channel
+\- $addadmin: adds a user to admins list 
         """)
     # high score
-    if m.startswith('$highscore'):
+    if m[0] ==('$highscore'):
         await message.channel.send(f'Server high score is: {count_info["high score"]}, counted by {count_info["highest counter"]}')
-    if m.startswith('$currentcount') or m.startswith('$count'):
+    if m[0] ==('$currentcount') or m[0] ==('$count'):
         await message.channel.send(f'The current count is {count_info["current"]}, counted by {count_info["last user"]}')
     
     ##############
     # USER STUFF #
     ##############
 
-    if m.startswith('$user'):
-        user = m[5:].strip()
-        await message.channel.send(f'fetching user stats for {user}')
-        user_stats = user_info[user]
-        await message.channel.send(f'Data: \nTotal counts: {user_stats["counts"]} \nFailed counts: {user_stats["failed"]}\nSlowmode: {user_stats["slowmode"]}s')
+    if m[0] ==('$user'):
+        user = ""
+        if len(m) == 1: user = author
+        else: user = m[1]
 
+        await message.channel.send(f'fetching user stats for {user}')
+        try:
+            user_stats = user_info[user]
+            await message.channel.send(f'Data: \nTotal counts: {user_stats["counts"]} \nFailed counts: {user_stats["failed"]}\nSlowmode: {user_stats["slowmode"]}s')
+        except KeyError:
+            await message.channel.send(f'ERROR: User {user} not registered')
+
+    if m[0] ==('$slowmode'):
+        if len(m) > 1 and m[1] == "set":
+            if author in count_info["admins"]:
+                user = m[2]
+                try:
+                    user_info[user]["slowmode"] = int(m[3])
+                    await message.channel.send(f'Successfully set {user}\'s slowmode to {m[3]}s')
+                except:
+                    await message.channel.send("invalid slowmode passed")
+            else: # not admin
+                if author == user:
+                    await message.channel.send('You aren\'t and admin, stop trying to changing your slowmode')
+                else:
+                    await message.channel.send('You aren\'t and admin, stop trying to change other people\'s slowmode')
+
+        else:
+            user = ""
+            if len(m) == 1:
+                user = author
+            else:
+                user = m[1]
+            try:
+                user_stats = user_info[user]
+                await message.channel.send(f'Current slowmode for {user} is: {user_stats["slowmode"]}s')
+            except KeyError:
+                await message.channel.send(f'ERROR: User {user} not registered')
     # admin commands
     if author in count_info["admins"]:
-        if m.startswith('$setchannel'):
+        if m[0] == ('$setchannel'):
             await message.channel.send(f'counting channel set to: <#{message.channel.id}>')
             count_info["channel"] = int(message.channel.id)
-        if m.startswith('$addadmin'):
-            username = m[9:].strip()
+        if m[0] ==('$addadmin'):
+            username = m[1]
             if not username in count_info["admins"]:
                 count_info["admins"].append(username)
                 await message.channel.send(f'set {username} as admin')
@@ -101,11 +139,24 @@ async def on_message(message):
         dump()
  
     # funny
-    if m.lower().startswith('is the admin allowed to count consecutively'):
-        await message.channel.send('yes, of course they can')
+    if m[0].lower().startswith('is the admin allowed to'):
+        await message.channel.send(f'yes, of course they can {m[0][24:]}')
 
     # actual counting stuff
-    if int(message.channel.id) == count_info["channel"] and m.isnumeric():
+    number = None
+    try:
+        #print(eval(''.join(m)))
+        number = int(eval(''.join(m)))
+        #print(f'evaluated {number}')
+    except:
+        try:
+            number = int(eval(m[0]))
+            print(f'falling back to evaluating first block, {number}')
+        except: pass
+        pass
+    if int(message.channel.id) == count_info["channel"] and isinstance(number, int):
+        # set number
+        #number = eval(m[0])
         # register user
         if not author in user_info.keys():
             user_info[author] = {"counts": 0, "slowmode": 1, "failed": 0}
@@ -113,8 +164,8 @@ async def on_message(message):
         # check for slowmode
         now = datetime.now()
 
-        # user in cooldown?
-        if author in user_cooldowns:
+        # user is under cooldown
+        if author in user_cooldowns and not author == "computingsquid":
             last_message_time = user_cooldowns[author]
             cooldown_end = last_message_time + timedelta(seconds=user_info[author]["slowmode"])
             if now < cooldown_end:
@@ -135,7 +186,7 @@ async def on_message(message):
         if count_info["last user"] == author and count_info["last user"] != "computingsquid":
             print(f'last user counted: {count_info["last user"]} user counted: {author}')
             await wrong(author, message, "You can't count twice in a row!")
-        elif int(m) == count_info["current"] + 1:
+        elif number == count_info["current"] + 1:
             #if count_info["last user"] == "computingsquid": await message.channel.send('admin is allowed to count consecutively')
             count_info["current"] += 1
             user_info[author]["counts"] += 1
@@ -144,6 +195,11 @@ async def on_message(message):
                 count_info["high score"] = count_info["current"]
                 count_info["highest counter"] = count_info["last user"]
             await message.add_reaction("✅")
+            if number == 69:
+                await message.add_reaction("🇳")
+                await message.add_reaction("🇮")
+                await message.add_reaction("🇨")
+                await message.add_reaction("🇪")
         elif count_info["current"] == 0:
             await message.add_reaction("⚠️")
             await message.channel.send('the counting starts at 1!')
