@@ -100,8 +100,9 @@ By the way, you can't count twice in a row. And try not to fail, because failing
 
     if m[0] ==('$slowmode'):
         if len(m) > 1 and m[1] == "set":
+            user = m[2]
             if author in count_info["admins"]:
-                user = m[2]
+                
                 try:
                     user_info[user]["slowmode"] = int(m[3])
                     await message.channel.send(f'Successfully set {user}\'s slowmode to {m[3]}s')
@@ -109,9 +110,9 @@ By the way, you can't count twice in a row. And try not to fail, because failing
                     await message.channel.send("invalid slowmode passed")
             else: # not admin
                 if author == user:
-                    await message.channel.send('You aren\'t and admin, stop trying to changing your slowmode')
+                    await message.channel.send('You aren\'t an admin, stop trying to changing your slowmode')
                 else:
-                    await message.channel.send('You aren\'t and admin, stop trying to change other people\'s slowmode')
+                    await message.channel.send('You aren\'t an admin, stop trying to change other people\'s slowmode')
 
         else:
             user = ""
