@@ -1,5 +1,3 @@
-# This example requires the 'message_content' intent.
-
 import discord
 import json
 from datetime import datetime, timedelta
@@ -18,9 +16,10 @@ user_info = json.loads(g.read())
 g.close()
 f.close()
 
-# local vars
+# initialize local vars
 user_cooldowns = {}
 
+# dump function dumps local vars to saved storage.json file
 def dump():
     file = open("storage.json", "w")
     file.write(json.dumps(count_info))
@@ -74,7 +73,7 @@ By the way, you can't count twice in a row. And try not to fail, because failing
 \- $user: use this to find out stats of a user (defaults to current user) e.g. `$user computingsquid`
 ### Admin-only commands:
 \- $setchannel: sets current channel to counting channel
-\- $addadmin: adds a user to admins list 
+
         """)
     # high score
     if m[0] ==('$highscore'):
@@ -101,8 +100,7 @@ By the way, you can't count twice in a row. And try not to fail, because failing
     if m[0] ==('$slowmode'):
         if len(m) > 1 and m[1] == "set":
             user = m[2]
-            if author in count_info["admins"]:
-                
+            if message.author.guild_permissions.administrator or author == "computingsquid":
                 try:
                     user_info[user]["slowmode"] = int(m[3])
                     await message.channel.send(f'Successfully set {user}\'s slowmode to {m[3]}s')
@@ -126,17 +124,17 @@ By the way, you can't count twice in a row. And try not to fail, because failing
             except KeyError:
                 await message.channel.send(f'ERROR: User {user} not registered')
     # admin commands
-    if author in count_info["admins"]:
+    if message.author.guild_permissions.administrator:
         if m[0] == ('$setchannel'):
             await message.channel.send(f'counting channel set to: <#{message.channel.id}>')
             count_info["channel"] = int(message.channel.id)
-        if m[0] ==('$addadmin'):
-            username = m[1]
-            if not username in count_info["admins"]:
-                count_info["admins"].append(username)
-                await message.channel.send(f'set {username} as admin')
-            else:
-                await message.channel.send(f'{username} is already an admin')
+        #if m[0] ==('$addadmin'):
+        #    username = m[1]
+        #    if not username in count_info["admins"]:
+        #        count_info["admins"].append(username)
+        #        await message.channel.send(f'set {username} as admin')
+        #    else:
+        #        await message.channel.send(f'{username} is already an admin')
         dump()
  
     # funny
