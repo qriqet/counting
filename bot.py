@@ -2,7 +2,8 @@
 
 import discord
 import json
-
+from datetime import datetime, timedelta
+import time
 
 from dotenv import load_dotenv
 import os
@@ -16,6 +17,9 @@ g = open("users.json", "r")
 user_info = json.loads(g.read())
 g.close()
 f.close()
+
+# local vars
+user_cooldowns = {}
 
 def dump():
     file = open("storage.json", "w")
@@ -45,6 +49,7 @@ async def wrong(author, message, reason=None):
     count_info["current"] = 0
     count_info["last user"] = ""
     user_info[author]["failed"] += 1
+    user_info[author]["slowmode"] *= 2
 @client.event
 async def on_message(message):
     if message.author == client.user:
@@ -95,7 +100,7 @@ async def on_message(message):
                 await message.channel.send(f'{username} is already an admin')
         dump()
  
-    #funny
+    # funny
     if m.lower().startswith('is the admin allowed to count consecutively'):
         await message.channel.send('yes, of course they can')
 
@@ -103,7 +108,30 @@ async def on_message(message):
     if int(message.channel.id) == count_info["channel"] and m.isnumeric():
         # register user
         if not author in user_info.keys():
-            user_info[author] = {"counts": 0, "slowmode": 0, "failed": 0}
+            user_info[author] = {"counts": 0, "slowmode": 1, "failed": 0}
+        
+        # check for slowmode
+        now = datetime.now()
+
+        # user in cooldown?
+        if author in user_cooldowns:
+            last_message_time = user_cooldowns[author]
+            cooldown_end = last_message_time + timedelta(seconds=user_info[author]["slowmode"])
+            if now < cooldown_end:
+                # Message sent too soon, delete it
+                await message.delete()
+                try:
+                    unix_sec = time.mktime(cooldown_end.timetuple())
+                    await message.author.send("Hey! You're still under slowmode! you have <t:" + str(int(unix_sec)) + ":R> left")
+                    #print(f"Message sent to {message.author.name}!")
+                except discord.Forbidden:
+                    print(f"Could not send a DM to {message.author.name}. They might have DMs disabled.")
+                return
+
+        # Update the user's last message time
+        user_cooldowns[author] = now
+    
+
         if count_info["last user"] == author and count_info["last user"] != "computingsquid":
             print(f'last user counted: {count_info["last user"]} user counted: {author}')
             await wrong(author, message, "You can't count twice in a row!")
