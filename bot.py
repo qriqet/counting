@@ -2,6 +2,7 @@ import discord
 import json
 from datetime import datetime, timedelta
 import time
+import allyourbase
 
 from dotenv import load_dotenv
 import os
@@ -62,7 +63,7 @@ async def wrong(author, message, reason=None):
     count_info[SERVER]["current"] = 0
     count_info[SERVER]["last user"] = ""
     count_info["userdata"][author]["failed"] += 1
-    count_info["userdata"]["slowmode"] *= 2
+    count_info["userdata"]["base"] -= 1 if count_info["userdata"]["base"] != 1 else 2
 @client.event
 async def on_message(message):
     if message.author == client.user:
@@ -81,7 +82,7 @@ async def on_message(message):
 # Don't know how to count? 
 It's simple. Simply start at 1, and increase like this:
 `1 2 3 4 5`
-By the way, you can't count twice in a row. And try not to fail, because failing will **DOUBLE** your slowmode!
+By the way, you can't count twice in a row. And try not to fail, because failing will decrease your base!
 ## Useful commands:
 \- $ping: pings the bot
 \- $highscore: outputs current highscore
@@ -153,31 +154,13 @@ By the way, you can't count twice in a row. And try not to fail, because failing
         if m[0] == ('$setchannel'):
             await message.channel.send(f'counting channel set to: <#{message.channel.id}>')
             count_info[SERVER]["channel"] = int(message.channel.id)
-        #if m[0] ==('$addadmin'):
-        #    username = m[1]
-        #    if not username in count_info[SERVER]["admins"]:
-        #        count_info[SERVER]["admins"].append(username)
-        #        await message.channel.send(f'set {username} as admin')
-        #    else:
-        #        await message.channel.send(f'{username} is already an admin')
         dump(SERVER)
- 
-    # funny
-    if m[0].lower().startswith('is the admin allowed to'):
-        await message.channel.send(f'yes, of course they can {m[0][24:]}')
 
     # actual counting stuff
     number = None
     try:
-        #print(eval(''.join(m)))
-        number = int(eval(''.join(m)))
-        #print(f'evaluated {number}')
-    except:
-        try:
-            number = int(eval(m[0]))
-            print(f'falling back to evaluating first block, {number}')
-        except: pass
-        pass
+        number = int(allyourbase.BaseConvert(count_info[SERVER]["userdata"][user]["base"]).decode(m[0]))
+    except: pass
     if int(message.channel.id) == count_info[SERVER]["channel"] and isinstance(number, int):
         # set number
         #number = eval(m[0])
