@@ -166,7 +166,7 @@ By the way, you can't count twice in a row. And try not to fail, because failing
         #number = eval(m[0])
         # register user
         if not author in count_info[SERVER]["userdata"].keys():
-            count_info[SERVER]["userdata"][author] = {"counts": 0, "slowmode": 1, "failed": 0}
+            count_info[SERVER]["userdata"][author] = {"counts": 0, "base": 16, "failed": 0}
         
         # check for slowmode
         now = datetime.now()
